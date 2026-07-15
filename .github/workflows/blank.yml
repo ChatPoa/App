@@ -1,0 +1,1235 @@
+import React, { useState } from "react";
+import {
+  Home, Users, MessageCircle, Bell, Search, Settings, ShoppingBag,
+  Image as ImageIcon, Video, Mic, Phone, MoreHorizontal, Heart,
+  MessageSquare, Share2, Bookmark, ThumbsUp, Plus, ChevronLeft,
+  ChevronRight, Sun, Moon, Lock, Shield, Globe, Ban, LogOut,
+  CheckCircle2, BadgeCheck, TrendingUp, Hash, UserPlus, Camera,
+  Edit3, Grid3x3, Clapperboard, Radio, DollarSign, BarChart3,
+  Flag, LayoutDashboard, X, Send, Mail, Eye, EyeOff, ArrowRight,
+  Sparkles, Calendar, MapPin, PlayCircle, Store, Users2,
+} from "lucide-react";
+
+/* =================================================================
+   DESIGN SYSTEM — tokens
+   Palette: signal blue + cyan, white canvas, dark-mode twin.
+   Type: Inter standing in for SF Pro Display (no CDN access to it).
+   Radius 12–16px. Glass used only on the top nav + modals.
+================================================================= */
+const LIGHT = {
+  bg: "#F5F8FD", surface: "#FFFFFF", surface2: "#F0F4FA",
+  text1: "#0E1526", text2: "#5B6478", text3: "#93A0B4",
+  line: "#E8EDF5", glass: "rgba(255,255,255,0.72)",
+};
+const DARK = {
+  bg: "#0A0F1C", surface: "#111827", surface2: "#182236",
+  text1: "#EEF2FA", text2: "#9AA4B8", text3: "#5D6780",
+  line: "rgba(255,255,255,0.08)", glass: "rgba(17,24,39,0.72)",
+};
+const BLUE = "#2F6BFF";
+const CYAN = "#17C3E6";
+const GRAD = `linear-gradient(135deg, ${BLUE} 0%, ${CYAN} 100%)`;
+
+function useTokens(dark) {
+  const t = dark ? DARK : LIGHT;
+  return { ...t, blue: BLUE, cyan: CYAN, grad: GRAD, danger: "#EF4444", success: "#22C55E", warn: "#F5A623" };
+}
+
+/* =================================================================
+   MOCK DATA — fictional, global cast
+================================================================= */
+const ME = { name: "Jordan Lee", handle: "@jordanlee", initials: "JL", grad: "linear-gradient(135deg,#2F6BFF,#17C3E6)" };
+const PEOPLE = [
+  { name: "Maya Chen", handle: "@mayachen", initials: "MC", grad: "linear-gradient(135deg,#7C4DFF,#2F6BFF)", verified: true },
+  { name: "Diego Alvarez", handle: "@diegoalvarez", initials: "DA", grad: "linear-gradient(135deg,#17C3E6,#22C55E)" },
+  { name: "Priya Nair", handle: "@priyanair", initials: "PN", grad: "linear-gradient(135deg,#F5A623,#EF4444)", verified: true },
+  { name: "Tom Becker", handle: "@tombecker", initials: "TB", grad: "linear-gradient(135deg,#2F6BFF,#7C4DFF)" },
+  { name: "Aisha Bello", handle: "@aishabello", initials: "AB", grad: "linear-gradient(135deg,#EF4444,#F5A623)" },
+  { name: "Noah Kim", handle: "@noahkim", initials: "NK", grad: "linear-gradient(135deg,#17C3E6,#2F6BFF)" },
+];
+const POSTS = [
+  { id: 1, user: PEOPLE[0], time: "12m", text: "Shipped the redesign today. Small team, six weeks, way too much coffee. Proud of this one.", likes: 482, comments: 61, tag: "product" },
+  { id: 2, user: PEOPLE[1], time: "40m", text: "Unpopular opinion: the best meetings are the ones that get cancelled.", likes: 219, comments: 34 },
+  { id: 3, user: PEOPLE[2], time: "1h", text: "Just hit 10 years at the same company. Wrote up what actually kept me here — link in comments.", likes: 903, comments: 128, tag: "career" },
+];
+const GROUPS = [
+  { name: "Product Design Weekly", members: "48.2K", cover: "linear-gradient(135deg,#2F6BFF,#17C3E6)" },
+  { name: "Remote Work Collective", members: "112K", cover: "linear-gradient(135deg,#7C4DFF,#2F6BFF)" },
+  { name: "Indie Makers", members: "29.8K", cover: "linear-gradient(135deg,#17C3E6,#22C55E)" },
+];
+const EVENTS = [
+  { name: "ChatPoa Creator Summit", date: "Aug 14", loc: "Austin, TX", cover: "linear-gradient(135deg,#2F6BFF,#17C3E6)" },
+  { name: "Design Systems Meetup", date: "Aug 22", loc: "Online", cover: "linear-gradient(135deg,#7C4DFF,#EF4444)" },
+];
+const PRODUCTS = [
+  { name: "Studio desk lamp", price: "$68", seller: PEOPLE[3], cover: "linear-gradient(135deg,#F5A623,#EF4444)" },
+  { name: "Mechanical keyboard", price: "$140", seller: PEOPLE[4], cover: "linear-gradient(135deg,#2F6BFF,#7C4DFF)" },
+  { name: "Vintage camera", price: "$210", seller: PEOPLE[5], cover: "linear-gradient(135deg,#17C3E6,#22C55E)" },
+];
+const CONVERSATIONS = [
+  { id: 1, person: PEOPLE[0], last: "That mockup looks great, ship it", time: "2m", unread: 2 },
+  { id: 2, person: PEOPLE[1], last: "Sent the files over", time: "1h", unread: 0 },
+  { id: 3, person: PEOPLE[2], last: "See you at the summit", time: "3h", unread: 1 },
+];
+const NOTIFS = [
+  { person: PEOPLE[0], text: "liked your post.", time: "2m", icon: Heart, color: "#EF4444" },
+  { person: PEOPLE[1], text: "started following you.", time: "38m", icon: UserPlus, color: "#2F6BFF" },
+  { person: PEOPLE[2], text: "commented on your post.", time: "1h", icon: MessageSquare, color: "#17C3E6" },
+];
+
+/* =================================================================
+   SHARED PRIMITIVES
+================================================================= */
+function Avatar({ person, size = 40, ring, t }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", padding: ring ? 3 : 0, background: ring ? GRAD : "transparent", flexShrink: 0 }}>
+      <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: person.grad, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 600, fontSize: size * 0.36, border: ring ? `2px solid ${t.surface}` : "none" }}>
+        {person.initials}
+      </div>
+    </div>
+  );
+}
+function NameRow({ person, t, size = 14.5 }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      <span style={{ fontWeight: 600, fontSize: size, color: t.text1 }}>{person.name}</span>
+      {person.verified && <BadgeCheck size={size} color={BLUE} fill={t.surface} />}
+    </span>
+  );
+}
+function Card({ t, children, style }) {
+  return <div style={{ background: t.surface, border: `1px solid ${t.line}`, borderRadius: 16, ...style }}>{children}</div>;
+}
+function Btn({ t, variant = "secondary", children, onClick, icon: Icon, style, full }) {
+  const base = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: "pointer", padding: "10px 18px", border: "1px solid transparent", width: full ? "100%" : "auto" };
+  const styles = {
+    primary: { background: GRAD, color: "#fff" },
+    secondary: { background: t.surface2, color: t.text1, border: `1px solid ${t.line}` },
+    ghost: { background: "transparent", color: t.text2 },
+    danger: { background: "transparent", color: "#EF4444", border: "1px solid rgba(239,68,68,0.35)" },
+  };
+  return <button onClick={onClick} style={{ ...base, ...styles[variant], ...style }}>{Icon && <Icon size={16} />}{children}</button>;
+}
+function IconBtn({ t, icon: Icon, badge, onClick, active }) {
+  return (
+    <button onClick={onClick} style={{ position: "relative", width: 40, height: 40, borderRadius: "50%", border: "none", background: active ? t.surface2 : "transparent", color: active ? BLUE : t.text2, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+      <Icon size={20} />
+      {badge > 0 && <span style={{ position: "absolute", top: 2, right: 2, background: "#EF4444", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 999, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{badge}</span>}
+    </button>
+  );
+}
+function Skeleton({ w = "100%", h = 14, t }) {
+  return <div style={{ width: w, height: h, borderRadius: 8, background: t.surface2, animation: "poaPulse 1.4s ease-in-out infinite" }} />;
+}
+function EmptyState({ t, icon: Icon, title, subtitle, cta }) {
+  return (
+    <div style={{ textAlign: "center", padding: "60px 24px", color: t.text2 }}>
+      <div style={{ width: 56, height: 56, borderRadius: "50%", background: t.surface2, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+        <Icon size={24} color={t.text3} />
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 16, color: t.text1, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 14, marginBottom: cta ? 18 : 0 }}>{subtitle}</div>
+      {cta}
+    </div>
+  );
+}
+function SectionHeader({ t, title, action }) {
+  return (
+    <div style={{ position: "sticky", top: 0, background: t.glass, backdropFilter: "blur(10px)", padding: "16px 20px", borderBottom: `1px solid ${t.line}`, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1, letterSpacing: "-0.01em" }}>{title}</span>
+      {action}
+    </div>
+  );
+}
+
+/* =================================================================
+   LOGO
+================================================================= */
+function PoaMark({ size = 34 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="poaG" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor={BLUE} /><stop offset="1" stopColor={CYAN} />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#poaG)" />
+      <path d="M32 17c-9.4 0-17 6.6-17 14.7 0 4.4 2.2 8.4 5.8 11.1l-1.2 6.4 7-3.6c1.7.5 3.5.7 5.4.7 9.4 0 17-6.6 17-14.6S41.4 17 32 17z" fill="#fff" />
+      <circle cx="24.5" cy="31.6" r="2.6" fill="url(#poaG)" />
+      <circle cx="32" cy="31.6" r="2.6" fill="url(#poaG)" />
+      <circle cx="39.5" cy="31.6" r="2.6" fill="url(#poaG)" />
+    </svg>
+  );
+}
+
+/* =================================================================
+   AUTH SCREENS (1-8): Splash, Welcome, Login, Register,
+   Verify Email, Forgot Password, Reset Password, Create Username
+================================================================= */
+function AuthShell({ t, children }) {
+  return (
+    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: 400, maxWidth: "100%" }}>{children}</div>
+    </div>
+  );
+}
+function Field({ t, label, type = "text", value, onChange, placeholder, toggle }) {
+  const [show, setShow] = useState(false);
+  return (
+    <label style={{ display: "block", marginBottom: 14 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: t.text2, display: "block", marginBottom: 6 }}>{label}</span>
+      <div style={{ position: "relative" }}>
+        <input
+          type={toggle ? (show ? "text" : "password") : type}
+          value={value} onChange={onChange} placeholder={placeholder}
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.line}`, background: t.surface2, color: t.text1, fontSize: 14.5, outline: "none" }}
+        />
+        {toggle && (
+          <button onClick={() => setShow(!show)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: t.text3, cursor: "pointer" }}>
+            {show ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
+        )}
+      </div>
+    </label>
+  );
+}
+function SplashScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ margin: "0 auto 20px", width: 84, height: 84 }}><PoaMark size={84} /></div>
+        <div style={{ fontWeight: 800, fontSize: 26, color: t.text1, letterSpacing: "-0.02em" }}>ChatPoa</div>
+        <div style={{ fontSize: 14, color: t.text2, marginTop: 6 }}>Where the world stays in touch</div>
+        <div onAnimationEnd={() => go("welcome")} style={{ margin: "40px auto 0", width: 28, height: 28, borderRadius: "50%", border: `3px solid ${t.line}`, borderTopColor: BLUE, animation: "poaSpin 0.9s linear infinite" }} />
+        <Btn t={t} variant="ghost" onClick={() => go("welcome")} style={{ marginTop: 24 }}>Skip</Btn>
+      </div>
+    </AuthShell>
+  );
+}
+function WelcomeScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <div style={{ width: 72, marginBottom: 24 }}><PoaMark size={56} /></div>
+      <h1 style={{ fontSize: 30, fontWeight: 800, color: t.text1, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px" }}>Connect with people who get you.</h1>
+      <p style={{ fontSize: 15, color: t.text2, lineHeight: 1.6, margin: "0 0 32px" }}>Posts, communities, marketplace and messaging — one clean, fast home for it all.</p>
+      <Btn t={t} variant="primary" full onClick={() => go("register")} icon={ArrowRight} style={{ marginBottom: 10, flexDirection: "row-reverse" }}>Create account</Btn>
+      <Btn t={t} variant="secondary" full onClick={() => go("login")}>Log in</Btn>
+    </AuthShell>
+  );
+}
+function LoginScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <div style={{ marginBottom: 28 }}><PoaMark size={40} /></div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: t.text1, margin: "0 0 20px" }}>Log in to ChatPoa</h2>
+      <Field t={t} label="Email" placeholder="name@company.com" />
+      <Field t={t} label="Password" toggle placeholder="Enter your password" />
+      <div style={{ textAlign: "right", marginBottom: 20 }}>
+        <span onClick={() => go("forgot")} style={{ fontSize: 13, color: BLUE, cursor: "pointer", fontWeight: 600 }}>Forgot password?</span>
+      </div>
+      <Btn t={t} variant="primary" full onClick={() => go("home")}>Log in</Btn>
+      <div style={{ textAlign: "center", marginTop: 18, fontSize: 13.5, color: t.text2 }}>
+        New here? <span onClick={() => go("register")} style={{ color: BLUE, fontWeight: 600, cursor: "pointer" }}>Create an account</span>
+      </div>
+    </AuthShell>
+  );
+}
+function RegisterScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <div style={{ marginBottom: 28 }}><PoaMark size={40} /></div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: t.text1, margin: "0 0 20px" }}>Create your account</h2>
+      <Field t={t} label="Full name" placeholder="Jordan Lee" />
+      <Field t={t} label="Email" placeholder="name@company.com" />
+      <Field t={t} label="Password" toggle placeholder="At least 8 characters" />
+      <Btn t={t} variant="primary" full onClick={() => go("verify")} style={{ marginTop: 6 }}>Continue</Btn>
+      <div style={{ textAlign: "center", marginTop: 18, fontSize: 13.5, color: t.text2 }}>
+        Already have an account? <span onClick={() => go("login")} style={{ color: BLUE, fontWeight: 600, cursor: "pointer" }}>Log in</span>
+      </div>
+    </AuthShell>
+  );
+}
+function VerifyScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <div style={{ width: 56, height: 56, borderRadius: "50%", background: t.surface2, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+        <Mail size={24} color={BLUE} />
+      </div>
+      <h2 style={{ fontSize: 21, fontWeight: 700, color: t.text1, margin: "0 0 8px" }}>Check your inbox</h2>
+      <p style={{ fontSize: 14, color: t.text2, margin: "0 0 24px" }}>We sent a 6-digit code to your email. Enter it below to verify your account.</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <input key={i} maxLength={1} style={{ width: 44, height: 52, textAlign: "center", fontSize: 18, fontWeight: 700, borderRadius: 10, border: `1px solid ${t.line}`, background: t.surface2, color: t.text1, outline: "none" }} />
+        ))}
+      </div>
+      <Btn t={t} variant="primary" full onClick={() => go("username")}>Verify</Btn>
+    </AuthShell>
+  );
+}
+function ForgotScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <h2 style={{ fontSize: 21, fontWeight: 700, color: t.text1, margin: "0 0 8px" }}>Reset your password</h2>
+      <p style={{ fontSize: 14, color: t.text2, margin: "0 0 20px" }}>Enter the email on your account and we'll send a reset link.</p>
+      <Field t={t} label="Email" placeholder="name@company.com" />
+      <Btn t={t} variant="primary" full onClick={() => go("reset")}>Send reset link</Btn>
+      <div style={{ textAlign: "center", marginTop: 18 }}>
+        <span onClick={() => go("login")} style={{ fontSize: 13.5, color: t.text2, cursor: "pointer" }}>← Back to log in</span>
+      </div>
+    </AuthShell>
+  );
+}
+function ResetScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <h2 style={{ fontSize: 21, fontWeight: 700, color: t.text1, margin: "0 0 20px" }}>Set a new password</h2>
+      <Field t={t} label="New password" toggle placeholder="At least 8 characters" />
+      <Field t={t} label="Confirm password" toggle placeholder="Re-enter password" />
+      <Btn t={t} variant="primary" full onClick={() => go("login")}>Update password</Btn>
+    </AuthShell>
+  );
+}
+function UsernameScreen({ t, go }) {
+  return (
+    <AuthShell t={t}>
+      <h2 style={{ fontSize: 21, fontWeight: 700, color: t.text1, margin: "0 0 8px" }}>Choose a username</h2>
+      <p style={{ fontSize: 14, color: t.text2, margin: "0 0 20px" }}>This is how people will find you on ChatPoa.</p>
+      <Field t={t} label="Username" placeholder="jordanlee" />
+      <Btn t={t} variant="primary" full onClick={() => go("home")}>Finish setup</Btn>
+    </AuthShell>
+  );
+}
+
+/* =================================================================
+   APP SHELL — sticky glass top nav, left sidebar, right rail,
+   floating compose button
+================================================================= */
+const NAV_MAIN = [
+  { key: "home", icon: Home },
+  { key: "friends", icon: Users },
+  { key: "groups", icon: Users2 },
+  { key: "marketplace", icon: ShoppingBag },
+  { key: "reels", icon: Clapperboard },
+];
+const SIDEBAR = [
+  { key: "profile", label: "Profile", icon: Users },
+  { key: "friends", label: "Friends", icon: Users },
+  { key: "groups", label: "Groups", icon: Users2 },
+  { key: "pages", label: "Pages", icon: Flag },
+  { key: "events", label: "Events", icon: Calendar },
+  { key: "saved", label: "Saved", icon: Bookmark },
+  { key: "reels", label: "Reels", icon: Clapperboard },
+  { key: "photos", label: "Photos", icon: ImageIcon },
+  { key: "live", label: "Live", icon: Radio },
+  { key: "marketplace", label: "Marketplace", icon: Store },
+  { key: "creator", label: "Creator studio", icon: BarChart3 },
+  { key: "admin", label: "Admin dashboard", icon: LayoutDashboard },
+  { key: "settings", label: "Settings", icon: Settings },
+];
+
+function TopNav({ t, dark, setDark, view, go, unread }) {
+  return (
+    <div style={{ position: "sticky", top: 0, zIndex: 30, background: t.glass, backdropFilter: "blur(14px)", borderBottom: `1px solid ${t.line}` }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
+        <div onClick={() => go("home")} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", flexShrink: 0 }}>
+          <PoaMark size={32} />
+          <span style={{ fontWeight: 800, fontSize: 18, color: t.text1, letterSpacing: "-0.02em" }} className="hide-sm">ChatPoa</span>
+        </div>
+        <div style={{ flex: 1, maxWidth: 420, display: "flex", alignItems: "center", gap: 8, background: t.surface2, borderRadius: 999, padding: "9px 14px" }} className="hide-sm">
+          <Search size={16} color={t.text3} />
+          <input placeholder="Search ChatPoa" style={{ border: "none", background: "transparent", outline: "none", fontSize: 13.5, color: t.text1, width: "100%" }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+          <IconBtn t={t} icon={Home} active={view === "home"} onClick={() => go("home")} />
+          <IconBtn t={t} icon={MessageCircle} onClick={() => go("chat")} active={view === "chat"} badge={3} />
+          <IconBtn t={t} icon={Bell} onClick={() => go("notifications")} active={view === "notifications"} badge={unread} />
+          <IconBtn t={t} icon={dark ? Sun : Moon} onClick={() => setDark(!dark)} />
+          <div onClick={() => go("profile")} style={{ marginLeft: 6, cursor: "pointer" }}><Avatar person={ME} size={34} t={t} /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeftSidebar({ t, view, go }) {
+  return (
+    <aside className="hide-md" style={{ width: 244, flexShrink: 0, padding: "18px 10px", position: "sticky", top: 61, height: "calc(100vh - 61px)", overflowY: "auto" }}>
+      <button onClick={() => go("profile")} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: 10, border: "none", background: "transparent", borderRadius: 10, cursor: "pointer" }}>
+        <Avatar person={ME} size={34} t={t} />
+        <span style={{ fontWeight: 600, fontSize: 14, color: t.text1 }}>{ME.name}</span>
+      </button>
+      {SIDEBAR.map(({ key, label, icon: Icon }) => (
+        <button key={key} onClick={() => go(key)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 10px", border: "none", background: view === key ? t.surface2 : "transparent", borderRadius: 10, cursor: "pointer", textAlign: "left", marginTop: 2 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: view === key ? GRAD : t.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={15} color={view === key ? "#fff" : t.text2} />
+          </div>
+          <span style={{ fontSize: 14, fontWeight: view === key ? 700 : 500, color: view === key ? t.text1 : t.text2 }}>{label}</span>
+        </button>
+      ))}
+    </aside>
+  );
+}
+
+function RightRail({ t, go }) {
+  return (
+    <aside className="hide-lg" style={{ width: 300, flexShrink: 0, padding: "18px 14px", position: "sticky", top: 61, height: "calc(100vh - 61px)", overflowY: "auto" }}>
+      <Card t={t} style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 15, color: t.text1, marginBottom: 12 }}>
+          <TrendingUp size={16} color={BLUE} /> Trending
+        </div>
+        {["#DesignSystems", "#RemoteWork", "#ChatPoaSummit", "#IndieMakers"].map((h) => (
+          <div key={h} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", fontSize: 13.5, color: t.text1, cursor: "pointer" }}>
+            <Hash size={14} color={t.text3} /> {h.slice(1)}
+          </div>
+        ))}
+      </Card>
+      <Card t={t} style={{ padding: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: t.text1, marginBottom: 12 }}>People you may know</div>
+        {PEOPLE.slice(0, 3).map((p) => (
+          <div key={p.handle} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+            <Avatar person={p} size={36} t={t} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+            </div>
+            <button style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${t.line}`, background: "transparent", color: BLUE, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={15} /></button>
+          </div>
+        ))}
+      </Card>
+    </aside>
+  );
+}
+
+function FloatingCompose({ t, onClick }) {
+  return (
+    <button onClick={onClick} style={{ position: "fixed", bottom: 26, right: 26, width: 56, height: 56, borderRadius: "50%", background: GRAD, border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 10px 30px rgba(47,107,255,0.35)", zIndex: 25 }}>
+      <Edit3 size={22} />
+    </button>
+  );
+}
+
+/* =================================================================
+   MODALS: Create Post, Comments, Share
+================================================================= */
+function ModalShell({ t, onClose, children, width = 480 }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,15,28,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width, maxWidth: "100%", maxHeight: "85vh", overflowY: "auto", background: t.surface, borderRadius: 18, border: `1px solid ${t.line}` }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+function CreatePostModal({ t, onClose, onPost }) {
+  const [text, setText] = useState("");
+  return (
+    <ModalShell t={t} onClose={onClose}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${t.line}` }}>
+        <span style={{ fontWeight: 700, fontSize: 16, color: t.text1 }}>Create post</span>
+        <button onClick={onClose} style={{ border: "none", background: "transparent", color: t.text2, cursor: "pointer" }}><X size={20} /></button>
+      </div>
+      <div style={{ padding: 18 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
+          <Avatar person={ME} size={40} t={t} />
+          <NameRow person={ME} t={t} />
+        </div>
+        <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder={`What's on your mind, ${ME.name.split(" ")[0]}?`} rows={5} style={{ width: "100%", border: "none", outline: "none", resize: "none", background: "transparent", color: t.text1, fontSize: 16 }} />
+        <div style={{ display: "flex", gap: 10, padding: "12px 0", borderTop: `1px solid ${t.line}`, marginTop: 8 }}>
+          <IconBtn t={t} icon={ImageIcon} />
+          <IconBtn t={t} icon={Video} />
+          <IconBtn t={t} icon={MapPin} />
+        </div>
+        <Btn t={t} variant="primary" full disabled={!text.trim()} onClick={() => { if (text.trim()) { onPost(text.trim()); onClose(); } }}>Post</Btn>
+      </div>
+    </ModalShell>
+  );
+}
+function CommentsModal({ t, post, onClose }) {
+  const comments = [
+    { person: PEOPLE[3], text: "This is so clean, congrats team!" },
+    { person: PEOPLE[4], text: "Been waiting for this update" },
+  ];
+  return (
+    <ModalShell t={t} onClose={onClose}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${t.line}` }}>
+        <span style={{ fontWeight: 700, fontSize: 16, color: t.text1 }}>Comments</span>
+        <button onClick={onClose} style={{ border: "none", background: "transparent", color: t.text2, cursor: "pointer" }}><X size={20} /></button>
+      </div>
+      <div style={{ padding: "14px 18px", borderBottom: `1px solid ${t.line}` }}>
+        <NameRow person={post.user} t={t} />
+        <p style={{ fontSize: 14.5, color: t.text1, margin: "6px 0 0" }}>{post.text}</p>
+      </div>
+      <div style={{ padding: "8px 18px" }}>
+        {comments.map((c, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0" }}>
+            <Avatar person={c.person} size={32} t={t} />
+            <div style={{ background: t.surface2, borderRadius: 14, padding: "8px 12px" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t.text1 }}>{c.person.name}</div>
+              <div style={{ fontSize: 13.5, color: t.text1 }}>{c.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, padding: 14, borderTop: `1px solid ${t.line}` }}>
+        <Avatar person={ME} size={32} t={t} />
+        <input placeholder="Write a comment..." style={{ flex: 1, border: `1px solid ${t.line}`, background: t.surface2, borderRadius: 999, padding: "9px 14px", color: t.text1, outline: "none", fontSize: 13.5 }} />
+      </div>
+    </ModalShell>
+  );
+}
+function ShareModal({ t, onClose }) {
+  return (
+    <ModalShell t={t} onClose={onClose} width={380}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${t.line}` }}>
+        <span style={{ fontWeight: 700, fontSize: 16, color: t.text1 }}>Share post</span>
+        <button onClick={onClose} style={{ border: "none", background: "transparent", color: t.text2, cursor: "pointer" }}><X size={20} /></button>
+      </div>
+      <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+        <Btn t={t} variant="secondary" full icon={Share2}>Share to your feed</Btn>
+        <Btn t={t} variant="secondary" full icon={MessageCircle}>Send in a message</Btn>
+        <Btn t={t} variant="secondary" full icon={Users2}>Share to a group</Btn>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* =================================================================
+   POST + STORIES
+================================================================= */
+function StoryRail({ t }) {
+  return (
+    <div style={{ display: "flex", gap: 12, padding: "14px 18px", overflowX: "auto" }}>
+      {[ME, ...PEOPLE].map((p, i) => (
+        <div key={p.handle + i} style={{ flexShrink: 0, width: 74, height: 118, borderRadius: 14, background: p.grad, position: "relative", overflow: "hidden", cursor: "pointer" }}>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent 50%)" }} />
+          <div style={{ position: "absolute", top: 8, left: 8, width: 28, height: 28, borderRadius: "50%", border: "2.5px solid #fff", background: t.surface }} />
+          <span style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#fff", fontSize: 11, fontWeight: 600 }}>{i === 0 ? "Your story" : p.name.split(" ")[0]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+function PostCard({ t, post, onLike, onOpenComments, onOpenShare }) {
+  return (
+    <Card t={t} style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar person={post.user} size={42} t={t} />
+          <div>
+            <NameRow person={post.user} t={t} />
+            <div style={{ fontSize: 12.5, color: t.text3 }}>{post.time} · public</div>
+          </div>
+        </div>
+        <MoreHorizontal size={18} color={t.text3} style={{ cursor: "pointer" }} />
+      </div>
+      <p style={{ fontSize: 15, lineHeight: 1.55, color: t.text1, margin: "0 0 10px" }}>{post.text}</p>
+      {post.tag && <span style={{ fontSize: 12.5, fontWeight: 600, color: BLUE, background: `${BLUE}14`, padding: "3px 10px", borderRadius: 999 }}>#{post.tag}</span>}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, paddingTop: 10, borderTop: `1px solid ${t.line}` }}>
+        <button onClick={() => onLike(post.id)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", color: post.liked ? BLUE : t.text2, fontSize: 13.5, fontWeight: 600 }}>
+          <ThumbsUp size={17} fill={post.liked ? BLUE : "none"} /> {post.likes}
+        </button>
+        <button onClick={() => onOpenComments(post)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", color: t.text2, fontSize: 13.5, fontWeight: 600 }}>
+          <MessageSquare size={17} /> {post.comments}
+        </button>
+        <button onClick={onOpenShare} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", color: t.text2, fontSize: 13.5, fontWeight: 600 }}>
+          <Share2 size={16} /> Share
+        </button>
+        <button style={{ border: "none", background: "transparent", cursor: "pointer", color: t.text2 }}><Bookmark size={17} /></button>
+      </div>
+    </Card>
+  );
+}
+
+/* =================================================================
+   SCREEN: Home Feed (covers Home Feed, News Feed, Stories,
+   Create Post, Single Post, Comments, Share)
+================================================================= */
+function HomeFeed({ t, posts, setPosts, openCompose, openComments, openShare }) {
+  const toggleLike = (id) => setPosts(posts.map((p) => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+  return (
+    <div style={{ maxWidth: 620, margin: "0 auto", padding: "16px 14px" }}>
+      <Card t={t} style={{ marginBottom: 14 }}><StoryRail t={t} /></Card>
+      <Card t={t} style={{ padding: 14, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar person={ME} size={38} t={t} />
+        <button onClick={openCompose} style={{ flex: 1, textAlign: "left", padding: "10px 16px", borderRadius: 999, border: "none", background: t.surface2, color: t.text3, fontSize: 14, cursor: "pointer" }}>
+          What's on your mind, {ME.name.split(" ")[0]}?
+        </button>
+        <IconBtn t={t} icon={ImageIcon} />
+      </Card>
+      {posts.map((p) => (
+        <PostCard key={p.id} t={t} post={p} onLike={toggleLike} onOpenComments={openComments} onOpenShare={openShare} />
+      ))}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Profile (covers My Profile, Other User Profile,
+   Edit Profile, Cover Photo, Profile Photos)
+================================================================= */
+function ProfileScreen({ t, self, posts, editing, setEditing }) {
+  const [tab, setTab] = useState("posts");
+  const person = self ? ME : PEOPLE[0];
+  const mine = posts.filter((p) => p.user.handle === person.handle);
+  const photos = PEOPLE.map((p) => p.grad);
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ height: 220, background: GRAD, borderRadius: "0 0 20px 20px", position: "relative" }}>
+        {self && <button style={{ position: "absolute", right: 16, bottom: 16, background: "rgba(0,0,0,0.35)", border: "none", color: "#fff", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><Camera size={15} /> Edit cover</button>}
+      </div>
+      <div style={{ padding: "0 20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: -48 }}>
+          <Avatar person={person} size={104} t={t} ring />
+          {self ? (
+            <Btn t={t} variant="secondary" icon={Edit3} onClick={() => setEditing(true)}>Edit profile</Btn>
+          ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn t={t} variant="primary" icon={UserPlus}>Add friend</Btn>
+              <Btn t={t} variant="secondary" icon={MessageCircle}>Message</Btn>
+            </div>
+          )}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <NameRow person={person} t={t} size={22} />
+          <div style={{ fontSize: 14, color: t.text2 }}>{person.handle}</div>
+        </div>
+        <p style={{ fontSize: 14.5, color: t.text1, lineHeight: 1.5, margin: "12px 0" }}>Product designer. Building calm software. Coffee enthusiast.</p>
+        <div style={{ display: "flex", gap: 22, fontSize: 13.5, color: t.text2, paddingBottom: 14 }}>
+          <span><b style={{ color: t.text1 }}>842</b> Friends</span>
+          <span><b style={{ color: t.text1 }}>3.1K</b> Followers</span>
+        </div>
+        <div style={{ display: "flex", gap: 22, borderTop: `1px solid ${t.line}`, borderBottom: `1px solid ${t.line}`, padding: "12px 0" }}>
+          {["posts", "photos", "about"].map((tb) => (
+            <span key={tb} onClick={() => setTab(tb)} style={{ cursor: "pointer", fontWeight: tab === tb ? 700 : 500, color: tab === tb ? BLUE : t.text2, textTransform: "capitalize", fontSize: 14 }}>{tb}</span>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "16px 20px" }}>
+        {tab === "posts" && (mine.length ? mine.map((p) => <PostCard key={p.id} t={t} post={p} onLike={() => {}} onOpenComments={() => {}} onOpenShare={() => {}} />) : (
+          <EmptyState t={t} icon={Edit3} title="Nothing posted yet" subtitle="Share your first update with your friends." cta={<Btn t={t} variant="primary">Create post</Btn>} />
+        ))}
+        {tab === "photos" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {photos.map((g, i) => <div key={i} style={{ aspectRatio: "1", borderRadius: 12, background: g }} />)}
+          </div>
+        )}
+        {tab === "about" && (
+          <Card t={t} style={{ padding: 18 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, color: t.text1, fontSize: 14 }}><MapPin size={16} color={t.text3} /> San Francisco, CA</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", color: t.text1, fontSize: 14 }}><Users size={16} color={t.text3} /> Joined March 2019</div>
+          </Card>
+        )}
+      </div>
+      {editing && (
+        <ModalShell t={t} onClose={() => setEditing(false)} width={440}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${t.line}` }}>
+            <span style={{ fontWeight: 700, fontSize: 16, color: t.text1 }}>Edit profile</span>
+            <button onClick={() => setEditing(false)} style={{ border: "none", background: "transparent", color: t.text2, cursor: "pointer" }}><X size={20} /></button>
+          </div>
+          <div style={{ padding: 18 }}>
+            <Field t={t} label="Name" value={ME.name} onChange={() => {}} />
+            <Field t={t} label="Bio" value="Product designer. Building calm software." onChange={() => {}} />
+            <Btn t={t} variant="primary" full onClick={() => setEditing(false)}>Save changes</Btn>
+          </div>
+        </ModalShell>
+      )}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Friends (covers Friends List, Friend Requests)
+================================================================= */
+function FriendsScreen({ t }) {
+  const [tab, setTab] = useState("all");
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "18px 20px" }}>
+      <div style={{ display: "flex", gap: 20, marginBottom: 18 }}>
+        {[["all", "All friends"], ["requests", "Requests"]].map(([k, l]) => (
+          <span key={k} onClick={() => setTab(k)} style={{ cursor: "pointer", fontWeight: tab === k ? 700 : 500, color: tab === k ? BLUE : t.text2, fontSize: 15 }}>{l}{k === "requests" ? " · 2" : ""}</span>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+        {(tab === "all" ? PEOPLE : PEOPLE.slice(0, 2)).map((p) => (
+          <Card t={t} key={p.handle} style={{ padding: 14, textAlign: "center" }}>
+            <div style={{ margin: "0 auto 10px" }}><Avatar person={p} size={64} t={t} /></div>
+            <NameRow person={p} t={t} />
+            <div style={{ fontSize: 12.5, color: t.text3, margin: "4px 0 12px" }}>{Math.floor(Math.random() * 20) + 2} mutual friends</div>
+            {tab === "all" ? <Btn t={t} variant="secondary" full>Message</Btn> : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn t={t} variant="primary" full>Accept</Btn>
+                <Btn t={t} variant="secondary" full>Decline</Btn>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Chat (covers Inbox, Chat List, 1:1 Chat, Group Chat,
+   Voice Call, Video Call, Shared Media)
+================================================================= */
+function ChatScreen({ t }) {
+  const [activeId, setActiveId] = useState(CONVERSATIONS[0].id);
+  const [call, setCall] = useState(null);
+  const [showMedia, setShowMedia] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [thread, setThread] = useState([
+    { mine: false, text: "That mockup looks great, ship it" },
+    { mine: true, text: "On it, deploying tonight" },
+  ]);
+  const active = CONVERSATIONS.find((c) => c.id === activeId);
+  const send = () => { if (!draft.trim()) return; setThread([...thread, { mine: true, text: draft.trim() }]); setDraft(""); };
+  return (
+    <div style={{ display: "flex", height: "calc(100vh - 61px)" }}>
+      <div className="hide-sm" style={{ width: 300, flexShrink: 0, borderRight: `1px solid ${t.line}`, overflowY: "auto" }}>
+        <div style={{ padding: "16px 18px 8px", fontWeight: 700, fontSize: 18, color: t.text1 }}>Chats</div>
+        {CONVERSATIONS.map((c) => (
+          <button key={c.id} onClick={() => setActiveId(c.id)} style={{ width: "100%", display: "flex", gap: 10, padding: "10px 18px", border: "none", background: activeId === c.id ? t.surface2 : "transparent", cursor: "pointer", textAlign: "left" }}>
+            <Avatar person={c.person} size={44} t={t} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><NameRow person={c.person} t={t} size={13.5} /><span style={{ fontSize: 11, color: t.text3 }}>{c.time}</span></div>
+              <div style={{ fontSize: 12.5, color: t.text2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.last}</div>
+            </div>
+            {c.unread > 0 && <span style={{ background: GRAD, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 999, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.unread}</span>}
+          </button>
+        ))}
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${t.line}` }}>
+          <Avatar person={active.person} size={38} t={t} />
+          <NameRow person={active.person} t={t} />
+          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+            <IconBtn t={t} icon={Phone} onClick={() => setCall("voice")} />
+            <IconBtn t={t} icon={Video} onClick={() => setCall("video")} />
+            <IconBtn t={t} icon={ImageIcon} onClick={() => setShowMedia(!showMedia)} />
+          </div>
+        </div>
+        {showMedia && (
+          <div style={{ display: "flex", gap: 8, padding: "12px 20px", borderBottom: `1px solid ${t.line}`, overflowX: "auto" }}>
+            {PEOPLE.map((p, i) => <div key={i} style={{ width: 56, height: 56, borderRadius: 10, background: p.grad, flexShrink: 0 }} />)}
+          </div>
+        )}
+        <div style={{ flex: 1, padding: 20, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" }}>
+          {thread.map((m, i) => (
+            <div key={i} style={{ alignSelf: m.mine ? "flex-end" : "flex-start", maxWidth: "68%", background: m.mine ? GRAD : t.surface2, color: m.mine ? "#fff" : t.text1, padding: "9px 14px", borderRadius: 16, borderBottomRightRadius: m.mine ? 4 : 16, borderBottomLeftRadius: m.mine ? 16 : 4, fontSize: 14 }}>{m.text}</div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, padding: "14px 20px", borderTop: `1px solid ${t.line}` }}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Message..." style={{ flex: 1, border: `1px solid ${t.line}`, background: t.surface2, borderRadius: 999, padding: "10px 16px", color: t.text1, outline: "none", fontSize: 14 }} />
+          <IconBtn t={t} icon={Mic} />
+          <button onClick={send} style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: GRAD, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Send size={16} /></button>
+        </div>
+      </div>
+      {call && (
+        <div style={{ position: "fixed", inset: 0, background: "#0A0F1C", zIndex: 60, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+          <Avatar person={active.person} size={110} t={t} />
+          <div style={{ fontWeight: 700, fontSize: 20, marginTop: 16 }}>{active.person.name}</div>
+          <div style={{ color: "#9AA4B8", marginTop: 4 }}>{call === "voice" ? "Voice call" : "Video call"} · 00:14</div>
+          <div style={{ display: "flex", gap: 16, marginTop: 40 }}>
+            <button style={{ width: 52, height: 52, borderRadius: "50%", border: "none", background: "#1F2937", color: "#fff", cursor: "pointer" }}><Mic size={20} /></button>
+            <button onClick={() => setCall(null)} style={{ width: 52, height: 52, borderRadius: "50%", border: "none", background: "#EF4444", color: "#fff", cursor: "pointer" }}><Phone size={20} /></button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Groups (covers Groups, Group Details, Create Group)
+================================================================= */
+function GroupsScreen({ t }) {
+  const [detail, setDetail] = useState(null);
+  const [creating, setCreating] = useState(false);
+  if (detail) return (
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ height: 160, background: detail.cover, borderRadius: "0 0 18px 18px", position: "relative" }}>
+        <button onClick={() => setDetail(null)} style={{ position: "absolute", top: 14, left: 14, background: "rgba(0,0,0,0.35)", border: "none", color: "#fff", borderRadius: "50%", width: 34, height: 34, cursor: "pointer" }}><ChevronLeft size={18} /></button>
+      </div>
+      <div style={{ padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 21, color: t.text1 }}>{detail.name}</div>
+        <div style={{ fontSize: 13.5, color: t.text2, margin: "4px 0 14px" }}>{detail.members} members · Public group</div>
+        <Btn t={t} variant="primary" full icon={CheckCircle2}>Joined</Btn>
+        <div style={{ marginTop: 18 }}>
+          {POSTS.slice(0, 2).map((p) => <PostCard key={p.id} t={t} post={p} onLike={() => {}} onOpenComments={() => {}} onOpenShare={() => {}} />)}
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Your groups</span>
+        <Btn t={t} variant="primary" icon={Plus} onClick={() => setCreating(true)}>Create group</Btn>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+        {GROUPS.map((g) => (
+          <Card t={t} key={g.name} style={{ overflow: "hidden", cursor: "pointer" }}>
+            <div onClick={() => setDetail(g)} style={{ height: 100, background: g.cover }} />
+            <div style={{ padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: t.text1 }}>{g.name}</div>
+              <div style={{ fontSize: 12.5, color: t.text2, margin: "4px 0 10px" }}>{g.members} members</div>
+              <Btn t={t} variant="secondary" full>View group</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {creating && (
+        <ModalShell t={t} onClose={() => setCreating(false)} width={420}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: `1px solid ${t.line}` }}>
+            <span style={{ fontWeight: 700, fontSize: 16, color: t.text1 }}>Create group</span>
+            <button onClick={() => setCreating(false)} style={{ border: "none", background: "transparent", color: t.text2, cursor: "pointer" }}><X size={20} /></button>
+          </div>
+          <div style={{ padding: 18 }}>
+            <Field t={t} label="Group name" placeholder="e.g. Weekend Hikers" />
+            <Field t={t} label="Description" placeholder="What's this group about?" />
+            <Btn t={t} variant="primary" full onClick={() => setCreating(false)}>Create</Btn>
+          </div>
+        </ModalShell>
+      )}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Pages, Events
+================================================================= */
+function PagesScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Pages you follow</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16, marginTop: 16 }}>
+        {["ChatPoa Design", "Global Makers Co.", "Studio North"].map((n, i) => (
+          <Card t={t} key={n} style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 12, background: PEOPLE[i].grad, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14.5, color: t.text1, display: "flex", alignItems: "center", gap: 4 }}>{n} <BadgeCheck size={14} color={BLUE} /></div>
+              <div style={{ fontSize: 12.5, color: t.text2 }}>{(i + 3) * 4.2}K followers</div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+function EventsScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Upcoming events</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginTop: 16 }}>
+        {EVENTS.map((e) => (
+          <Card t={t} key={e.name} style={{ overflow: "hidden" }}>
+            <div style={{ height: 110, background: e.cover }} />
+            <div style={{ padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: t.text1 }}>{e.name}</div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, color: t.text2, margin: "6px 0 12px" }}><Calendar size={13} /> {e.date} · <MapPin size={13} /> {e.loc}</div>
+              <Btn t={t} variant="primary" full>Interested</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Search / Explore (covers Search, Explore, Trending,
+   Hashtags, Suggested Friends)
+================================================================= */
+function ExploreScreen({ t }) {
+  const [tab, setTab] = useState("trending");
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, background: t.surface2, borderRadius: 999, padding: "10px 16px", marginBottom: 16 }}>
+        <Search size={16} color={t.text3} />
+        <input placeholder="Search people, hashtags, posts" style={{ border: "none", background: "transparent", outline: "none", fontSize: 14, color: t.text1, width: "100%" }} />
+      </div>
+      <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
+        {[["trending", "Trending"], ["hashtags", "Hashtags"], ["people", "Suggested"]].map(([k, l]) => (
+          <span key={k} onClick={() => setTab(k)} style={{ cursor: "pointer", fontWeight: tab === k ? 700 : 500, color: tab === k ? BLUE : t.text2, fontSize: 14.5 }}>{l}</span>
+        ))}
+      </div>
+      {tab === "trending" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {PEOPLE.map((p, i) => <div key={i} style={{ aspectRatio: "1", borderRadius: 12, background: p.grad }} />)}
+        </div>
+      )}
+      {tab === "hashtags" && ["#DesignSystems", "#RemoteWork", "#IndieMakers", "#ChatPoaSummit"].map((h) => (
+        <div key={h} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", borderBottom: `1px solid ${t.line}` }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: t.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}><Hash size={17} color={BLUE} /></div>
+          <div><div style={{ fontWeight: 600, fontSize: 14.5, color: t.text1 }}>{h}</div><div style={{ fontSize: 12.5, color: t.text2 }}>12.4K posts</div></div>
+        </div>
+      ))}
+      {tab === "people" && PEOPLE.map((p) => (
+        <div key={p.handle} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0" }}>
+          <Avatar person={p} size={40} t={t} />
+          <div style={{ flex: 1 }}><NameRow person={p} t={t} /><div style={{ fontSize: 12.5, color: t.text2 }}>{p.handle}</div></div>
+          <Btn t={t} variant="secondary" icon={UserPlus}>Follow</Btn>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Reels, Photos, Live
+================================================================= */
+function ReelsScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Reels</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginTop: 16 }}>
+        {[...PEOPLE, ...PEOPLE].map((p, i) => (
+          <div key={i} style={{ aspectRatio: "9/16", borderRadius: 14, background: p.grad, position: "relative", cursor: "pointer" }}>
+            <PlayCircle size={26} color="#fff" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function PhotosScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Photos</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 16 }}>
+        {[...PEOPLE, ...PEOPLE].map((p, i) => <div key={i} style={{ aspectRatio: "1", borderRadius: 12, background: p.grad }} />)}
+      </div>
+    </div>
+  );
+}
+function LiveScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Live now</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16, marginTop: 16 }}>
+        {PEOPLE.slice(0, 2).map((p) => (
+          <Card t={t} key={p.handle} style={{ overflow: "hidden" }}>
+            <div style={{ height: 140, background: p.grad, position: "relative" }}>
+              <span style={{ position: "absolute", top: 10, left: 10, background: "#EF4444", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>● LIVE</span>
+            </div>
+            <div style={{ padding: 14, display: "flex", gap: 10, alignItems: "center" }}>
+              <Avatar person={p} size={34} t={t} />
+              <div><div style={{ fontWeight: 600, fontSize: 13.5, color: t.text1 }}>{p.name}</div><div style={{ fontSize: 12, color: t.text2 }}>1.2K watching</div></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Notifications (covers Notifications, Activity)
+================================================================= */
+function NotificationsScreen({ t }) {
+  return (
+    <div style={{ maxWidth: 620, margin: "0 auto" }}>
+      <SectionHeader t={t} title="Notifications" />
+      {NOTIFS.map((n, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: `1px solid ${t.line}` }}>
+          <n.icon size={18} color={n.color} />
+          <Avatar person={n.person} size={38} t={t} />
+          <div style={{ flex: 1, fontSize: 14, color: t.text1 }}><span style={{ fontWeight: 600 }}>{n.person.name}</span> {n.text}</div>
+          <span style={{ fontSize: 12, color: t.text3 }}>{n.time}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Saved Posts
+================================================================= */
+function SavedScreen({ t, posts }) {
+  return (
+    <div style={{ maxWidth: 620, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Saved</span>
+      <div style={{ marginTop: 14 }}>
+        {posts.slice(0, 1).map((p) => <PostCard key={p.id} t={t} post={p} onLike={() => {}} onOpenComments={() => {}} onOpenShare={() => {}} />)}
+      </div>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Settings (covers Settings, Privacy, Security,
+   Blocked Users, Language, Dark Mode)
+================================================================= */
+function Toggle({ on, onClick }) {
+  return (
+    <button onClick={onClick} style={{ width: 42, height: 24, borderRadius: 999, border: "none", background: on ? GRAD : "#D6DCE6", position: "relative", cursor: "pointer", flexShrink: 0 }}>
+      <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: on ? 21 : 3, transition: "left 0.15s" }} />
+    </button>
+  );
+}
+function SettingsRow({ t, icon: Icon, label, sub, right }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 4px" }}>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: t.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon size={17} color={t.text2} /></div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: t.text1 }}>{label}</div>
+        {sub && <div style={{ fontSize: 12.5, color: t.text2 }}>{sub}</div>}
+      </div>
+      {right}
+    </div>
+  );
+}
+function SettingsScreen({ t, dark, setDark }) {
+  const [tab, setTab] = useState("general");
+  const [priv, setPriv] = useState({ privateAccount: false, activityStatus: true });
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Settings</span>
+      <div style={{ display: "flex", gap: 18, margin: "16px 0", overflowX: "auto" }}>
+        {[["general", "General"], ["privacy", "Privacy"], ["security", "Security"], ["blocked", "Blocked"], ["language", "Language"]].map(([k, l]) => (
+          <span key={k} onClick={() => setTab(k)} style={{ cursor: "pointer", whiteSpace: "nowrap", fontWeight: tab === k ? 700 : 500, color: tab === k ? BLUE : t.text2, fontSize: 14 }}>{l}</span>
+        ))}
+      </div>
+      <Card t={t} style={{ padding: "4px 16px" }}>
+        {tab === "general" && (
+          <SettingsRow t={t} icon={dark ? Sun : Moon} label="Dark mode" sub="Switch the whole app to a dark palette" right={<Toggle on={dark} onClick={() => setDark(!dark)} />} />
+        )}
+        {tab === "privacy" && (
+          <>
+            <SettingsRow t={t} icon={Lock} label="Private account" sub="Only friends can see your posts" right={<Toggle on={priv.privateAccount} onClick={() => setPriv({ ...priv, privateAccount: !priv.privateAccount })} />} />
+            <SettingsRow t={t} icon={Eye} label="Activity status" sub="Show when you're active on ChatPoa" right={<Toggle on={priv.activityStatus} onClick={() => setPriv({ ...priv, activityStatus: !priv.activityStatus })} />} />
+          </>
+        )}
+        {tab === "security" && (
+          <>
+            <SettingsRow t={t} icon={Shield} label="Two-factor authentication" sub="Add an extra layer of security" right={<Btn t={t} variant="secondary">Enable</Btn>} />
+            <SettingsRow t={t} icon={Lock} label="Change password" right={<ChevronRight size={16} color={t.text3} />} />
+          </>
+        )}
+        {tab === "blocked" && (
+          <SettingsRow t={t} icon={Ban} label="Blocked users" sub="You haven't blocked anyone" right={<span style={{ fontSize: 13, color: t.text3 }}>0</span>} />
+        )}
+        {tab === "language" && (
+          <SettingsRow t={t} icon={Globe} label="App language" sub="English (US)" right={<ChevronRight size={16} color={t.text3} />} />
+        )}
+      </Card>
+      <Btn t={t} variant="danger" full icon={LogOut} style={{ marginTop: 16 }}>Log out</Btn>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Marketplace (covers Marketplace, Product Page,
+   Seller Profile)
+================================================================= */
+function MarketplaceScreen({ t }) {
+  const [product, setProduct] = useState(null);
+  if (product) return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "18px 20px" }}>
+      <button onClick={() => setProduct(null)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: t.text2, cursor: "pointer", marginBottom: 14 }}><ChevronLeft size={16} /> Back to marketplace</button>
+      <div style={{ height: 260, borderRadius: 16, background: product.cover, marginBottom: 16 }} />
+      <div style={{ fontWeight: 800, fontSize: 22, color: t.text1 }}>{product.price}</div>
+      <div style={{ fontSize: 15, color: t.text1, margin: "4px 0 16px" }}>{product.name}</div>
+      <Card t={t} style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <Avatar person={product.seller} size={42} t={t} />
+        <div style={{ flex: 1 }}><NameRow person={product.seller} t={t} /><div style={{ fontSize: 12.5, color: t.text2 }}>Usually responds within an hour</div></div>
+        <Btn t={t} variant="secondary">View profile</Btn>
+      </Card>
+      <Btn t={t} variant="primary" full icon={MessageCircle}>Message seller</Btn>
+    </div>
+  );
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Marketplace</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14, marginTop: 16 }}>
+        {[...PRODUCTS, ...PRODUCTS].map((p, i) => (
+          <Card key={i} t={t} style={{ overflow: "hidden", cursor: "pointer" }} onClick={undefined}>
+            <div onClick={() => setProduct(p)} style={{ aspectRatio: "1", background: p.cover }} />
+            <div style={{ padding: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: t.text1 }}>{p.price}</div>
+              <div style={{ fontSize: 12.5, color: t.text2 }}>{p.name}</div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Creator Studio (covers Verification, Monetization,
+   Creator Dashboard)
+================================================================= */
+function CreatorScreen({ t }) {
+  const stats = [
+    { label: "Followers", value: "18.4K", icon: Users },
+    { label: "Post reach (30d)", value: "482K", icon: TrendingUp },
+    { label: "Earnings (30d)", value: "$1,240", icon: DollarSign },
+  ];
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Creator studio</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, margin: "16px 0" }}>
+        {stats.map((s) => (
+          <Card t={t} key={s.label} style={{ padding: 16 }}>
+            <s.icon size={18} color={BLUE} />
+            <div style={{ fontSize: 22, fontWeight: 800, color: t.text1, marginTop: 10 }}>{s.value}</div>
+            <div style={{ fontSize: 12.5, color: t.text2 }}>{s.label}</div>
+          </Card>
+        ))}
+      </div>
+      <Card t={t} style={{ padding: 18, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <BadgeCheck size={20} color={BLUE} />
+          <span style={{ fontWeight: 700, fontSize: 15, color: t.text1 }}>Get verified</span>
+        </div>
+        <p style={{ fontSize: 13.5, color: t.text2, margin: "0 0 12px" }}>Verification confirms your identity and adds a badge to your profile.</p>
+        <Btn t={t} variant="primary">Apply for verification</Btn>
+      </Card>
+      <Card t={t} style={{ padding: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <DollarSign size={20} color={CYAN} />
+          <span style={{ fontWeight: 700, fontSize: 15, color: t.text1 }}>Monetization</span>
+        </div>
+        <p style={{ fontSize: 13.5, color: t.text2, margin: "0 0 12px" }}>You're eligible for fan subscriptions and in-stream ads.</p>
+        <Btn t={t} variant="secondary">Set up payouts</Btn>
+      </Card>
+    </div>
+  );
+}
+
+/* =================================================================
+   SCREEN: Admin Dashboard (covers Admin Dashboard, User
+   Management, Reports, Analytics)
+================================================================= */
+function AdminScreen({ t }) {
+  const [tab, setTab] = useState("overview");
+  const stats = [
+    { label: "Total users", value: "4.2M" },
+    { label: "Daily active", value: "1.8M" },
+    { label: "Open reports", value: "312" },
+    { label: "New signups today", value: "9.4K" },
+  ];
+  return (
+    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "18px 20px" }}>
+      <span style={{ fontWeight: 700, fontSize: 19, color: t.text1 }}>Admin dashboard</span>
+      <div style={{ display: "flex", gap: 20, margin: "16px 0" }}>
+        {[["overview", "Overview"], ["users", "User management"], ["reports", "Reports"]].map(([k, l]) => (
+          <span key={k} onClick={() => setTab(k)} style={{ cursor: "pointer", fontWeight: tab === k ? 700 : 500, color: tab === k ? BLUE : t.text2, fontSize: 14 }}>{l}</span>
+        ))}
+      </div>
+      {tab === "overview" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
+          {stats.map((s) => (
+            <Card t={t} key={s.label} style={{ padding: 16 }}>
+              <BarChart3 size={17} color={BLUE} />
+              <div style={{ fontSize: 21, fontWeight: 800, color: t.text1, marginTop: 8 }}>{s.value}</div>
+              <div style={{ fontSize: 12.5, color: t.text2 }}>{s.label}</div>
+            </Card>
+          ))}
+        </div>
+      )}
+      {tab === "users" && (
+        <Card t={t} style={{ padding: 6 }}>
+          {PEOPLE.map((p) => (
+            <div key={p.handle} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 10px", borderBottom: `1px solid ${t.line}` }}>
+              <Avatar person={p} size={34} t={t} />
+              <div style={{ flex: 1 }}><NameRow person={p} t={t} size={13.5} /><div style={{ fontSize: 12, color: t.text2 }}>{p.handle}</div></div>
+              <Btn t={t} variant="secondary">Manage</Btn>
+            </div>
+          ))}
+        </Card>
+      )}
+      {tab === "reports" && (
+        <Card t={t} style={{ padding: 6 }}>
+          {["Spam post flagged by 12 users", "Impersonation report on @tombecker", "Harassment report in Indie Makers group"].map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 10px", borderBottom: `1px solid ${t.line}` }}>
+              <Flag size={16} color="#EF4444" />
+              <span style={{ flex: 1, fontSize: 13.5, color: t.text1 }}>{r}</span>
+              <Btn t={t} variant="secondary">Review</Btn>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* =================================================================
+   ROOT APP
+================================================================= */
+const AUTH_SCREENS = { splash: SplashScreen, welcome: WelcomeScreen, login: LoginScreen, register: RegisterScreen, verify: VerifyScreen, forgot: ForgotScreen, reset: ResetScreen, username: UsernameScreen };
+
+export default function ChatPoaApp() {
+  const [dark, setDark] = useState(false);
+  const [view, setView] = useState("splash");
+  const [posts, setPosts] = useState(POSTS);
+  const [modal, setModal] = useState(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const t = useTokens(dark);
+
+  const addPost = (text) => setPosts([{ id: Date.now(), user: ME, time: "just now", text, likes: 0, comments: 0 }, ...posts]);
+
+  if (AUTH_SCREENS[view]) {
+    const Screen = AUTH_SCREENS[view];
+    return (
+      <div data-theme={dark ? "dark" : "light"}>
+        <GlobalStyle />
+        <Screen t={t} go={setView} />
+      </div>
+    );
+  }
+
+  const screens = {
+    home: <HomeFeed t={t} posts={posts} setPosts={setPosts} openCompose={() => setModal({ type: "compose" })} openComments={(p) => setModal({ type: "comments", post: p })} openShare={() => setModal({ type: "share" })} />,
+    profile: <ProfileScreen t={t} self posts={posts} editing={editingProfile} setEditing={setEditingProfile} />,
+    otherProfile: <ProfileScreen t={t} self={false} posts={posts} editing={false} setEditing={() => {}} />,
+    friends: <FriendsScreen t={t} />,
+    chat: <ChatScreen t={t} />,
+    groups: <GroupsScreen t={t} />,
+    pages: <PagesScreen t={t} />,
+    events: <EventsScreen t={t} />,
+    explore: <ExploreScreen t={t} />,
+    reels: <ReelsScreen t={t} />,
+    photos: <PhotosScreen t={t} />,
+    live: <LiveScreen t={t} />,
+    notifications: <NotificationsScreen t={t} />,
+    saved: <SavedScreen t={t} posts={posts} />,
+    settings: <SettingsScreen t={t} dark={dark} setDark={setDark} />,
+    marketplace: <MarketplaceScreen t={t} />,
+    creator: <CreatorScreen t={t} />,
+    admin: <AdminScreen t={t} />,
+  };
+
+  return (
+    <div data-theme={dark ? "dark" : "light"} style={{ background: t.bg, minHeight: "100vh" }}>
+      <GlobalStyle />
+      <TopNav t={t} dark={dark} setDark={setDark} view={view} go={setView} unread={NOTIFS.length} />
+      <div style={{ display: "flex", maxWidth: 1280, margin: "0 auto" }}>
+        <LeftSidebar t={t} view={view} go={setView} />
+        <main style={{ flex: 1, minWidth: 0, paddingBottom: 40 }}>{screens[view] || screens.home}</main>
+        {view === "home" && <RightRail t={t} go={setView} />}
+      </div>
+      {view === "home" && <FloatingCompose t={t} onClick={() => setModal({ type: "compose" })} />}
+      {modal?.type === "compose" && <CreatePostModal t={t} onClose={() => setModal(null)} onPost={addPost} />}
+      {modal?.type === "comments" && <CommentsModal t={t} post={modal.post} onClose={() => setModal(null)} />}
+      {modal?.type === "share" && <ShareModal t={t} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+function GlobalStyle() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      * { box-sizing: border-box; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+      input, textarea { font-family: inherit; }
+      @keyframes poaSpin { to { transform: rotate(360deg); } }
+      @keyframes poaPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 8px; }
+      @media (max-width: 900px) { .hide-md { display: none !important; } }
+      @media (max-width: 1150px) { .hide-lg { display: none !important; } }
+      @media (max-width: 640px) { .hide-sm { display: none !important; } }
+    `}</style>
+  );
+}
